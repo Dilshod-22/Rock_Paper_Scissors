@@ -1,114 +1,41 @@
-const choiceButtons = document.querySelectorAll(".choice-btn");
-const gameDiv = document.querySelector(".game");
-const resultsDiv = document.querySelector(".results");
-const resultDivs = document.querySelectorAll(".results__result");
-const resultWinner = document.querySelector(".results__winner");
-const resultText = document.querySelector(".results__text");
-const playAgainBtn = document.querySelector(".play-again");
-const scoreNumber = document.querySelector(".score__number");
-let score = 0;
+const express = require("express")
+const app = express()
+const bodyParser = require("body-parser")
+const morgan = require('morgan')
+const helmet = require('helmet')
+const passport = require('passport') 
+const session = require('express-session')
+
+const Dbconnect = require("./config/dbConnect")
+const userRoute = require("./routes/user")
+const quizRoute = require("./routes/quiz")
+const scoreRoute = require("./routes/score")
+
+Dbconnect()
+require('./config/passport')
+require('dotenv').config()
 
 
-// data 
-
-const CHOICES = [
-  {
-    name: "paper",
-    beats: "rock",
-  },
-  {
-    name: "scissors",
-    beats: "paper",
-  },
-  {
-    name: "rock",
-    beats: "scissors",
-  },
-];
+app.use(express.json())
+app.use(bodyParser.urlencoded({extended:true}))
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: true }
+}))
+app.use(passport.initialize())
+app.use(passport.session())
+app.use(morgan('dev'))
+app.use(helmet())
 
 
+app.use("/api/auth",userRoute)
+app.use("/api/quiz",quizRoute)
+app.use("/api/score",scoreRoute)
 
-choiceButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const choiceName = button.dataset.choice;
-    const choice = CHOICES.find((choice) => choice.name === choiceName);
-    choose(choice);
-  });
-});
+const PORT = process.env.PORT || 8000
 
-
-function choose(choice) {
-  const aichoice = aiChoose();
-  displayResults([choice, aichoice]);
-  displayWinner([choice, aichoice]);
-}
-
-function aiChoose() {
-  const rand = Math.floor(Math.random() * CHOICES.length);
-  return CHOICES[rand];
-}
-
-function displayResults(results) {
-  resultDivs.forEach((resultDiv, idx) => {
-    setTimeout(() => {
-      resultDiv.innerHTML = `
-        <div class="choice ${results[idx].name}">
-          <img src="images/icon-${results[idx].name}.svg" alt="${results[idx].name}" class="choiceIMG" />
-        </div>
-      `;
-    }, idx * 1000);
-  });
-  gameDiv.classList.toggle("hidden");
-  resultsDiv.classList.toggle("hidden");
-}
-function displayWinner(results) {
-  setTimeout(() => {
-    const userWins = isWinner(results);
-    const aiWins = isWinner(results.reverse());
-    if (userWins) {
-      resultText.innerText = "you win";
-      resultDivs[0].classList.toggle("winner");
-      keepScore(1);
-    } else if (aiWins) {
-      resultText.innerText = "you lose";
-      resultDivs[1].classList.toggle("winner");
-      keepScore(-1);
-    } else {
-      resultText.innerText = "draw";
-    }
-    resultWinner.classList.toggle("hidden");
-    resultsDiv.classList.toggle("show-winner");
-  }, 1000);
-}
-function isWinner(results) {
-  return results[0].beats === results[1].name;
-}
-function keepScore(point) {
-  score += point;
-  scoreNumber.innerText = score;
-}
-playAgainBtn.addEventListener("click", () => {
-  gameDiv.classList.toggle("hidden");
-  resultsDiv.classList.toggle("hidden");
-  resultDivs.forEach((resultDiv) => {
-    resultDiv.innerHTML = "";
-    resultDiv.classList.remove("winner");
-  });
-  resultText.innerText = "";
-  resultWinner.classList.toggle("hidden");
-  resultsDiv.classList.toggle("show-winner");
-});
-
-// modal
-
-const btnRules = document.querySelector(".rules-btn");
-const btnClose = document.querySelector(".close-btn");
-const modalRules = document.querySelector(".modal");
-
-btnRules.addEventListener("click", () => {
-  modalRules.classList.toggle("show-modal");
-});
-
-btnClose.addEventListener("click", () => {
-  modalRules.classList.toggle("show-modal");
-});
+app.listen(PORT,()=>{
+    console.log("server is running");
+})
